@@ -37,6 +37,8 @@ Session = `{ id, projectId, directory, title, agent, model:ModelRef, parentID?:s
    - `Message = { id, type:"user"|"assistant"|"synthetic"|"system"|"compaction"|"shell"|"skill"|"idle"|"agent-switched"|"model-switched"|"location-switched", time:{created,completed?,streamed?}, text?:string, parts:ContentPart[], tokens?, cost?, agent?, model?, outcome?, raw:any }`
    - `ContentPart = { type:"text"|"reasoning"|"tool"|"patch"|"file"|"snapshot"|"step-start"|"step-finish"|..., ... }` (raw v2 content passthrough with a normalized `text` for text parts)
 - `POST /api/oh/sessions/:id/prompt` body `{ text:string, files?, agents?, skills?, delivery? }` → `{ message:Message }`
+- `POST /api/oh/sessions/:id/model` body `{ model:ModelRef }` → `{ session:Session }`
+- `POST /api/oh/sessions/:id/agent` body `{ agent:string }` → `{ session:Session }`
 - `POST /api/oh/sessions/:id/interrupt` → `{ ok:true }`
 - `POST /api/oh/sessions/:id/compact` → `{ ok:true }`
 - `PATCH /api/oh/sessions/:id` body `{ title?, archived?, pinned? }` → `{ session:Session }`
@@ -48,6 +50,8 @@ Session = `{ id, projectId, directory, title, agent, model:ModelRef, parentID?:s
 Goal = `{ sessionId, objective:string, budgetTokens?:number, maxTurns?:number, turns:number, usedTokens:number, state:"armed"|"running"|"paused"|"complete"|"blocked"|"aborted", lastVerdict?, note?, updatedAt:number }`
 - `PUT /api/oh/sessions/:id/goal` body `{ objective:string, budgetTokens?, maxTurns? }` → `{ goal:Goal }`
 - `GET /api/oh/sessions/:id/goal` → `{ goal:Goal|null }`
+- `POST /api/oh/sessions/:id/goal/pause` → `{ goal:Goal }`
+- `POST /api/oh/sessions/:id/goal/resume` → `{ goal:Goal }`
 - `DELETE /api/oh/sessions/:id/goal` → `{ ok:true }`
 
 ## Schedules
@@ -69,7 +73,7 @@ Rules are OpenCode v2 ordered rules `{ action, resource, effect:"allow"|"deny"|"
 
 ## Control (typed action contract; also exposed as agent tool `openhouse`)
 - `POST /api/oh/control` body `{ action:string, ...params }` → `{ ok:true, data:any }`
-Actions (MVP): `health`, `projects.list`, `projects.add`, `projects.remove`, `sessions.list`, `sessions.create`, `sessions.send`, `sessions.messages`, `sessions.status`, `sessions.interrupt`, `sessions.delete`, `models.list`, `agents.list`, `skills.list`, `schedules.list`, `schedules.create`, `schedules.run`, `schedules.delete`, `schedules.toggle`, `goal.set`, `goal.status`, `goal.clear`, `mcp.list`, `mcp.enable`, `mcp.disable`.
+Actions (MVP): `health`, `projects.list`, `projects.add`, `projects.remove`, `sessions.list`, `sessions.create`, `sessions.send`, `sessions.messages`, `sessions.status`, `sessions.interrupt`, `sessions.delete`, `models.list`, `agents.list`, `skills.list`, `schedules.list`, `schedules.create`, `schedules.run`, `schedules.delete`, `schedules.toggle`, `goal.set`, `goal.status`, `goal.pause`, `goal.resume`, `goal.clear`, `mcp.list`, `mcp.enable`, `mcp.disable`.
 
 ## Events (SSE)
 - `GET /api/oh/event?projectId?` → `text/event-stream`. Events: `{ type, at:number, projectId?, sessionId?, data:any }`.
@@ -79,6 +83,7 @@ Types:
 - `session.updated` `{ session }`
 - `session.status` `{ sessionId, status, reason?:string, goal?:Goal }`
 - `session.message` `{ sessionId, message:Message }` (on commit)
+- `session.question` `{ sessionId, question:any }` (opencode `form.created` / `question.asked` — the session is waiting for an answer)
 - `session.delta` `{ sessionId, messageId, kind:"text"|"reasoning"|"tool", index?, delta:string }`
 - `session.context` `{ sessionId, context }` (throttled token updates)
 - `schedule.run` `{ scheduleId, projectId, sessionId, status:"started"|"ok"|"error", error? }`
